@@ -320,9 +320,14 @@ TL.snowSide = newTile(c => { base(c, [134,96,60], [104,72,46], .5, 4);
   for (let x = 0; x < T; x++) { const h = 4 + ((hashI(x,8,6)*2)|0);
     for (let y = 0; y < h; y++) { const n = vnoise2(x*.6+80, y*.6+80);
       c.fillStyle = `rgb(${(228+n*24)|0},${(232+n*20)|0},${(244+n*10)|0})`; c.fillRect(x, y, 1, 1); } } });
-TL.water = newTile(c => { base(c, [52,96,196], [34,70,160], .6, 44, cc => {
-  cc.fillStyle = 'rgba(120,170,255,.35)';
-  cc.fillRect(1,3,6,1); cc.fillRect(8,7,6,1); cc.fillRect(3,11,5,1); cc.fillRect(10,13,4,1); }); });
+TL.water = newTile(c => { // seamless: no edge AO so the ocean surface doesn't show a grid
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+    const n = vnoise2(x * .6 + 44, y * .6 + 44);
+    c.fillStyle = `rgb(${(52+(34-52)*n)|0},${(96+(70-96)*n)|0},${(196+(160-196)*n)|0})`;
+    c.fillRect(x, y, 1, 1);
+  }
+  c.fillStyle = 'rgba(120,170,255,.3)';
+  c.fillRect(1,3,6,1); c.fillRect(8,7,6,1); c.fillRect(3,11,5,1); c.fillRect(10,13,4,1); });
 TL.bedrock = newTile(c => { base(c, [70,70,74], [38,38,42], .9, 48,
   cc => speck(cc, 'rgba(20,20,24,.8)', 14, 49, 2)); });
 TL.coal = newTile(c => { base(c, [136,138,142], [110,112,118], .45, 8, cc => {
@@ -662,13 +667,13 @@ const chunkSh = locs(makeProg(`
 const FDIR = [[0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]];
 const FBRIGHT = [1.0, .55, .72, .72, .84, .84];
 // per face: 4 corner positions (CCW from outside) and the 2 in-plane axes for AO
-const FCORN = [
+const FCORN = [               // 4 corners per face, CCW viewed from outside
   [[0,1,1],[1,1,1],[1,1,0],[0,1,0]],   // +y
   [[0,0,0],[1,0,0],[1,0,1],[0,0,1]],   // -y
-  [[1,0,1],[1,1,1],[1,1,0],[1,0,0]],   // +x  (corner order gives CCW outside)
-  [[0,0,0],[0,1,0],[0,1,1],[0,0,1]],   // -x
-  [[0,0,1],[0,1,1],[1,1,1],[1,0,1]],   // +z
-  [[1,0,0],[1,1,0],[0,1,0],[0,0,0]],   // -z
+  [[1,0,0],[1,1,0],[1,1,1],[1,0,1]],   // +x
+  [[0,0,1],[0,1,1],[0,1,0],[0,0,0]],   // -x
+  [[1,0,1],[1,1,1],[0,1,1],[0,0,1]],   // +z
+  [[0,0,0],[0,1,0],[1,1,0],[1,0,0]],   // -z
 ];
 function aoFor(wx, wy, wz, f, corner) {
   // corner is the integer corner offset (0/1 each axis); sample 3 neighbours in face plane
@@ -1866,8 +1871,8 @@ function frame() {
   gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.enable(gl.CULL_FACE);
-  gl.cullFace(gl.BACK);
+  if (window.__LC && window.__LC.noCull) gl.disable(gl.CULL_FACE);
+  else { gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); }
 
   drawStars(vp, Math.max(0, .9 - day * 2));
   drawSkyBodies(vp, sunAng, day);
